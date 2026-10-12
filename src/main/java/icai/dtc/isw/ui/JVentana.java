@@ -1,52 +1,74 @@
 package icai.dtc.isw.ui;
 
-import icai.dtc.isw.client.Client;
-import icai.dtc.isw.domain.Customer;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
 import java.awt.*;
-import java.util.HashMap;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
 public class JVentana extends JFrame {
 
+    private CardLayout cardLayout;
+    private JPanel pnlContenedorPrincipal;
+
+    // Panel Login
     private JTextField txtUsuario;
+
+    // Panel Aparcamiento
+    private JLabel lblSaludo;
+    private JTextField txtLatitud;
+    private JTextField txtLongitud;
+    private JButton btnAparcar;
+    private JLabel lblEstadoTexto;
+    private JButton btnDesaparcar;
+
+    // Variables de estado local (sin BD por ahora)
+    private String nombreUsuarioActual;
+    private boolean estaAparcado = false;
+    private String horaAparcado = "";
 
     public static void main(String[] args) {
         new JVentana();
     }
 
     public JVentana() {
-        super("Park Now");
+        super("ParkNow");
 
-        // Panel principal contenedor con margen alrededor (arriba, izquierda, abajo, derecha)
-        JPanel pnlContenedor = new JPanel(new BorderLayout(15, 15));
-        pnlContenedor.setBorder(new EmptyBorder(25, 30, 25, 30));
-        this.setContentPane(pnlContenedor);
+        cardLayout = new CardLayout();
+        pnlContenedorPrincipal = new JPanel(cardLayout);
 
-        // 1. Panel Norte: Título de la aplicación
-        JPanel pnlNorte = new JPanel();
+        // Añadimos los dos paneles
+        pnlContenedorPrincipal.add(crearPanelLogin(), "PANTALLA_LOGIN");
+        pnlContenedorPrincipal.add(crearPanelAparcar(), "PANTALLA_APARCAR");
+
+        this.setContentPane(pnlContenedorPrincipal);
+        this.setSize(480, 480);
+        this.setResizable(false);
+        this.setLocationRelativeTo(null);
+        this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        this.setVisible(true);
+
+        cardLayout.show(pnlContenedorPrincipal, "PANTALLA_LOGIN");
+    }
+
+    private JPanel crearPanelLogin() {
+        JPanel pnl = new JPanel(new BorderLayout(15, 15));
+        pnl.setBorder(new EmptyBorder(60, 40, 60, 40));
+
         JLabel lblTitulo = new JLabel("ParkNow", SwingConstants.CENTER);
-        lblTitulo.setFont(new Font("Arial", Font.BOLD, 22));
-        pnlNorte.add(lblTitulo);
-        pnlContenedor.add(pnlNorte, BorderLayout.NORTH);
+        lblTitulo.setFont(new Font("Arial", Font.BOLD, 24));
+        pnl.add(lblTitulo, BorderLayout.NORTH);
 
-        // 2. Panel Centro: Etiqueta y campo de texto con margen y altura cómoda
-        JPanel pnlCentro = new JPanel();
-        pnlCentro.setLayout(new GridLayout(2, 1, 8, 8));
-
-        JLabel lblUsuario = new JLabel("Iniciar sesión");
-        lblUsuario.setFont(new Font("Arial", Font.PLAIN, 15));
-
+        JPanel pnlCentro = new JPanel(new GridLayout(2, 1, 8, 8));
+        JLabel lblSub = new JLabel("Iniciar sesión");
+        lblSub.setFont(new Font("Arial", Font.PLAIN, 15));
         txtUsuario = new JTextField();
         txtUsuario.setFont(new Font("Arial", Font.PLAIN, 14));
-        txtUsuario.setPreferredSize(new Dimension(300, 35));
-
-        pnlCentro.add(lblUsuario);
+        pnlCentro.add(lblSub);
         pnlCentro.add(txtUsuario);
-        pnlContenedor.add(pnlCentro, BorderLayout.CENTER);
+        pnl.add(pnlCentro, BorderLayout.CENTER);
 
-        // 3. Panel Sur: Para Botón Entrar
         JPanel pnlSur = new JPanel();
         JButton btnEntrar = new JButton("Entrar");
         btnEntrar.setFont(new Font("Arial", Font.BOLD, 14));
@@ -59,32 +81,116 @@ public class JVentana extends JFrame {
                 return;
             }
 
-            Customer user = login(nombre);
-            if (user != null) {
-                JOptionPane.showMessageDialog(this, "¡Bienvenido, " + user.getName() + "!");
-                this.dispose();
-            } else {
-                JOptionPane.showMessageDialog(this, "Usuario no encontrado.");
-            }
+            nombreUsuarioActual = nombre;
+            lblSaludo.setText("Hola, " + nombreUsuarioActual);
+            cardLayout.show(pnlContenedorPrincipal, "PANTALLA_APARCAR");
         });
 
         pnlSur.add(btnEntrar);
-        pnlContenedor.add(pnlSur, BorderLayout.SOUTH);
+        pnl.add(pnlSur, BorderLayout.SOUTH);
 
-        // Ajustes de dimensiones y centrado
-        this.setSize(440, 250);
-        this.setResizable(false);
-        this.setLocationRelativeTo(null);
-        this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        this.setVisible(true);
+        return pnl;
     }
 
-    public Customer login(String nombre) {
-        Client cliente = new Client();
-        HashMap<String, Object> session = new HashMap<>();
-        session.put("nombre", nombre);
+    private JPanel crearPanelAparcar() {
+        JPanel pnl = new JPanel();
+        pnl.setLayout(new BoxLayout(pnl, BoxLayout.Y_AXIS));
+        pnl.setBorder(new EmptyBorder(20, 25, 20, 25));
 
-        session = cliente.sentMessage("/login", session);
-        return (Customer) session.get("Customer");
+        // 1. Saludo
+        JPanel pnlSaludo = new JPanel(new BorderLayout());
+        lblSaludo = new JLabel("Hola");
+        lblSaludo.setFont(new Font("Arial", Font.BOLD, 18));
+        pnlSaludo.add(lblSaludo, BorderLayout.WEST);
+        pnl.add(pnlSaludo);
+        pnl.add(Box.createRigidArea(new Dimension(0, 15)));
+
+        // 2. Registrar aparcamiento
+        JPanel pnlRegistrar = new JPanel(new BorderLayout(10, 10));
+        pnlRegistrar.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createEtchedBorder(), "📍 Registrar aparcamiento",
+                TitledBorder.LEFT, TitledBorder.TOP, new Font("Arial", Font.BOLD, 13)));
+
+        JPanel pnlCoords = new JPanel(new GridLayout(2, 2, 10, 5));
+        pnlCoords.add(new JLabel("Latitud:"));
+        pnlCoords.add(new JLabel("Longitud:"));
+        txtLatitud = new JTextField("40.4168");
+        txtLongitud = new JTextField("-3.7038");
+        pnlCoords.add(txtLatitud);
+        pnlCoords.add(txtLongitud);
+
+        btnAparcar = new JButton("🅿 He aparcado aquí");
+        btnAparcar.setFont(new Font("Arial", Font.BOLD, 13));
+        btnAparcar.addActionListener(e -> {
+            horaAparcado = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
+            estaAparcado = true;
+            actualizarEstadoVisual();
+            JOptionPane.showMessageDialog(this, "¡Coche registrado como aparcado!");
+        });
+
+        pnlRegistrar.add(pnlCoords, BorderLayout.CENTER);
+        pnlRegistrar.add(btnAparcar, BorderLayout.SOUTH);
+        pnl.add(pnlRegistrar);
+        pnl.add(Box.createRigidArea(new Dimension(0, 15)));
+
+        // 3. Estado del aparcamiento
+        JPanel pnlEstado = new JPanel(new BorderLayout(10, 10));
+        pnlEstado.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createEtchedBorder(), "Estado del aparcamiento",
+                TitledBorder.LEFT, TitledBorder.TOP, new Font("Arial", Font.BOLD, 13)));
+
+        lblEstadoTexto = new JLabel("No hay ningún vehículo aparcado.");
+        lblEstadoTexto.setFont(new Font("Arial", Font.PLAIN, 13));
+
+        btnDesaparcar = new JButton("🚗 Ya me he marchado");
+        btnDesaparcar.setFont(new Font("Arial", Font.BOLD, 13));
+        btnDesaparcar.setEnabled(false);
+        btnDesaparcar.addActionListener(e -> {
+            estaAparcado = false;
+            horaAparcado = "";
+            actualizarEstadoVisual();
+            JOptionPane.showMessageDialog(this, "Has retirado el coche.");
+        });
+
+        pnlEstado.add(lblEstadoTexto, BorderLayout.CENTER);
+        pnlEstado.add(btnDesaparcar, BorderLayout.SOUTH);
+        pnl.add(pnlEstado);
+        pnl.add(Box.createRigidArea(new Dimension(0, 15)));
+
+        // 4. Consultar aparcamientos
+        JPanel pnlConsultar = new JPanel(new BorderLayout(5, 5));
+        pnlConsultar.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createEtchedBorder(), "Consultar aparcamientos",
+                TitledBorder.LEFT, TitledBorder.TOP, new Font("Arial", Font.BOLD, 13)));
+
+        JLabel lblSubConsulta = new JLabel("Lista de registros recientes y su estado.");
+        lblSubConsulta.setFont(new Font("Arial", Font.ITALIC, 12));
+        lblSubConsulta.setForeground(Color.DARK_GRAY);
+
+        JButton btnFlecha = new JButton("⬇");
+        btnFlecha.setPreferredSize(new Dimension(50, 30));
+        btnFlecha.addActionListener(e -> JOptionPane.showMessageDialog(this, "Listado en desarrollo."));
+
+        pnlConsultar.add(lblSubConsulta, BorderLayout.CENTER);
+        pnlConsultar.add(btnFlecha, BorderLayout.EAST);
+        pnl.add(pnlConsultar);
+
+        return pnl;
+    }
+
+    private void actualizarEstadoVisual() {
+        if (estaAparcado) {
+            lblEstadoTexto.setText("<html>Aparcado desde las <b>" + horaAparcado + "</b> &nbsp;&nbsp;<font color='green'>[Activo]</font></html>");
+            btnAparcar.setEnabled(false);
+            btnDesaparcar.setEnabled(true);
+            txtLatitud.setEnabled(false);
+            txtLongitud.setEnabled(false);
+        } else {
+            lblEstadoTexto.setText("No hay ningún vehículo aparcado.");
+            btnAparcar.setEnabled(true);
+            btnDesaparcar.setEnabled(false);
+            txtLatitud.setEnabled(true);
+            txtLongitud.setEnabled(true);
+        }
     }
 }
